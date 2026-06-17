@@ -104,9 +104,9 @@ export const JobsStatusesTable = ({
                 </span>
               </TableCell>
             </TableRow>
-            <TableRow key={jobInstance.id} className={TABLE_BODY_ROW}>
+            <TableRow>
               <TableCell
-                className="text-left whitespace-nowrap"
+                className="text-left whitespace-normal"
                 title={jobInstance.result}
               >
                 {jobInstance.result || "-"}
