@@ -73,29 +73,28 @@ export const JobsStatusesTable = ({
             <TableHead className="text-left">Started At</TableHead>
             <TableHead className="text-left">Finished At</TableHead>
             <TableHead className="text-left">Status</TableHead>
-            <TableHead className="text-left">Result</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedInstances.map((jobInstance) => (
             <React.Fragment key={jobInstance.id}>
               {/* Main Data Row */}
-              <TableRow classname={TABLE_BODY_ROW}>
-                <TableCell classname="text-left">{jobInstance.id}</TableCell>
-                <TableCell classname="text-left">{jobInstance.job_id}</TableCell>
-                <TableCell classname="text-left">
+              <TableRow className={TABLE_BODY_ROW}>
+                <TableCell className="text-left">{jobInstance.id}</TableCell>
+                <TableCell className="text-left">{jobInstance.job_id}</TableCell>
+                <TableCell className="text-left">
                   {jobInstance.device_id}
                 </TableCell>
-                <TableCell classname="text-left">
+                <TableCell className="text-left">
                   {jobInstance.device_origin ?? "-"}
                 </TableCell>
-                <TableCell classname="text-left whitespace-nowrap">
+                <TableCell className="text-left whitespace-nowrap">
                   {formatTimestamp(jobInstance.started_at_ms)}
                 </TableCell>
-                <TableCell classname="text-left whitespace-nowrap">
+                <TableCell className="text-left whitespace-nowrap">
                   {formatTimestamp(jobInstance.finished_at_ms || 0)}
                 </TableCell>
-                <TableCell classname="text-left">
+                <TableCell className="text-left">
                   <span
                     className={cn(
                       "font-medium",
@@ -108,9 +107,9 @@ export const JobsStatusesTable = ({
               </TableRow>
               {/* Expandable Result Row */}
               {jobInstance.result && (
-                <TableRow classname="bg-muted/50">
-                  <TableCell classname="text-left whitespace-normal" colspan={7} title={jobInstance.result}>
-                    <div classname="max-h-24 overflow-y-auto font-mono text-xs">
+                <TableRow className="bg-muted/50">
+                  <TableCell className="text-left whitespace-normal" colspan={7} title={jobInstance.result}>
+                    <div className="max-h-24 overflow-y-auto font-mono text-xs">
                       {jobInstance.result}
                     </div>
                   </TableCell>
