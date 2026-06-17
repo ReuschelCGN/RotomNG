@@ -103,6 +103,12 @@ export const JobsStatusesTable = ({
                   {jobInstance.status}
                 </span>
               </TableCell>
+              <TableCell
+                className="text-left max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
+                title={jobInstance.result}
+              >
+                {jobInstance.result || "-"}
+              </TableCell>
             </TableRow>
             <TableRow>
               <TableCell
