@@ -4,7 +4,7 @@ services:
     container_name: rotom-ng
     restart: unless-stopped
     volumes:
-      - ./RotomNG/configs/rotom.toml:/rotom-ng/configs/rotom-ng.toml
+      - ./RotomNG/configs/rotom-ng.toml:/rotom-ng/configs/rotom-ng.toml
       - ./RotomNG/logs:/rotom-ng/logs
       - ./RotomNG/jobs:/rotom-ng/jobs
     ports:
