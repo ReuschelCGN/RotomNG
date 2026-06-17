@@ -108,15 +108,15 @@ jobs:
           file: apps/rotom-ng/Dockerfile
           platforms: ${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing') && format('type=image,"name={0}",push-by-digest=true,name-canonical=true,push=true', env.GHCR_REPO) || 'type=docker' }}
+          outputs: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developmod') && format('type=image,"name={0}",push-by-digest=true,name-canonical=true,push=true', env.GHCR_REPO) || 'type=docker' }}
       - name: Export digest
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developmod'
         run: |
           mkdir -p ${{ runner.temp }}/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
       - name: Upload digest
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developmod'
         uses: actions/upload-artifact@v4
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
@@ -124,7 +124,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Extract binary from build
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developmod'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -132,7 +132,7 @@ jobs:
           platforms: ${{ matrix.arch }}
           outputs: type=local,dest=${{ runner.temp }}/image-out
       - name: Upload binary
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developmod'
         uses: actions/upload-artifact@v4
         with:
           name: rotom-ng-binary-${{ env.PLATFORM_PAIR }}
@@ -141,7 +141,7 @@ jobs:
           retention-days: 1
 
   merge-docker-builds:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developmod'
     needs: [build]
     runs-on: ubuntu-latest
     permissions:
@@ -173,13 +173,13 @@ jobs:
           ver=$(cat apps/rotom-ng/app/version/version.txt | tr -d '[:space:]')
           if [ "${{ github.ref }}" = "refs/heads/main" ] && [[ "$ver" =~ ^[0-9.]+$ ]]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" = "refs/heads/testing" ] && [[ ! "$ver" =~ ^[0-9.]+$ ]]; then
+          elif [ "${{ github.ref }}" = "refs/heads/developmod" ] && [[ ! "$ver" =~ ^[0-9.]+$ ]]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
           else
             echo "should_release=false" >> $GITHUB_OUTPUT
           fi
-          if [ "${{ github.ref }}" = "refs/heads/testing" ]; then
-            ver="${ver}-testing"
+          if [ "${{ github.ref }}" = "refs/heads/developmod" ]; then
+            ver="${ver}-developmod"
           fi
           echo "value=v${ver}" >> $GITHUB_OUTPUT
       - name: Docker meta
@@ -201,7 +201,7 @@ jobs:
           docker buildx imagetools inspect ${{ env.GHCR_REPO }}:${{ steps.meta.outputs.version }}
 
   release:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developmod'
     needs: [build]
     runs-on: ubuntu-latest
     permissions:
@@ -220,13 +220,13 @@ jobs:
           ver=$(cat apps/rotom-ng/app/version/version.txt | tr -d '[:space:]')
           if [ "${{ github.ref }}" = "refs/heads/main" ] && [[ "$ver" =~ ^[0-9.]+$ ]]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" = "refs/heads/testing" ] && [[ ! "$ver" =~ ^[0-9.]+$ ]]; then
+          elif [ "${{ github.ref }}" = "refs/heads/developmod" ] && [[ ! "$ver" =~ ^[0-9.]+$ ]]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
           else
             echo "should_release=false" >> $GITHUB_OUTPUT
           fi
-          if [ "${{ github.ref }}" = "refs/heads/testing" ]; then
-            ver="${ver}-testing"
+          if [ "${{ github.ref }}" = "refs/heads/developmod" ]; then
+            ver="${ver}-developmod"
           fi
           echo "value=v${ver}" >> $GITHUB_OUTPUT
       - name: Download binary
@@ -256,7 +256,7 @@ jobs:
           tag="rotom-ng-${{ steps.version.outputs.value }}"
           file="${{ runner.temp }}/rotom-ng-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz"
           prerelease_flag=""
-          if [ "${{ github.ref }}" = "refs/heads/testing" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/developmod" ]; then
             prerelease_flag="--prerelease"
           fi
           # Create release if it doesn't exist
