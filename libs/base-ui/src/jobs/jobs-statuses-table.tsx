@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { motion } from "motion/react";
-import { Fragment } from 'react';
+import React, { Fragment } from 'react';
 import {
   Table,
   TableBody,
