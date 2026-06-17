@@ -76,42 +76,49 @@ export const JobsStatusesTable = ({
             <TableHead className="text-left">Result</TableHead>
           </TableRow>
         </TableHeader>
-        <tablebody>
-          {sortedinstances.map((jobinstance) => (
-            <React.Fragment key={jobinstance.id}>
+        <TableBody>
+          {sortedInstances.map((jobInstance) => (
+            <React.Fragment key={jobInstance.id}>
               {/* Main Data Row */}
-              <tablerow classname={table_body_row}>
-                <tablecell classname="text-left">{jobinstance.id}</tablecell>
-                <tablecell classname="text-left">{jobinstance.job_id}</tablecell>
-                <tablecell classname="text-left">{jobinstance.device_id}</tablecell>
-                <tablecell classname="text-left">
-                  {jobinstance.device_origin ?? "-"}
-                </tablecell>
-                <tablecell classname="text-left whitespace-nowrap">
-                  {formattimestamp(jobinstance.started_at_ms)}
-                </tablecell>
-                <tablecell classname="text-left whitespace-nowrap">
-                  {formattimestamp(jobinstance.finished_at_ms || 0)}
-                </tablecell>
-                <tablecell classname="text-left">
-                  <span classname={cn("font-medium", getstatusclass(jobinstance.status))}>
-                    {jobinstance.status}
+              <TableRow classname={TABLE_BODY_ROW}>
+                <TableCell classname="text-left">{jobInstance.id}</TableCell>
+                <TableCell classname="text-left">{jobInstance.job_id}</TableCell>
+                <TableCell classname="text-left">
+                  {jobInstance.device_id}
+                </TableCell>
+                <TableCell classname="text-left">
+                  {jobInstance.device_origin ?? "-"}
+                </TableCell>
+                <TableCell classname="text-left whitespace-nowrap">
+                  {formatTimestamp(jobInstance.started_at_ms)}
+                </TableCell>
+                <TableCell classname="text-left whitespace-nowrap">
+                  {formatTimestamp(jobInstance.finished_at_ms || 0)}
+                </TableCell>
+                <TableCell classname="text-left">
+                  <span
+                    className={cn(
+                      "font-medium",
+                      getStatusClass(jobInstance.status),
+                    )}
+                  >
+                    {jobInstance.status}
                   </span>
-                </tablecell>
-              </tablerow>
+                </TableCell>
+              </TableRow>
               {/* Expandable Result Row */}
-              {jobinstance.result && (
-                <tablerow classname="bg-muted/50">
-                  <tablecell classname="text-left whitespace-normal" colspan={7} title={jobinstance.result}>
+              {jobInstance.result && (
+                <TableRow classname="bg-muted/50">
+                  <TableCell classname="text-left whitespace-normal" colspan={7} title={jobInstance.result}>
                     <div classname="max-h-24 overflow-y-auto font-mono text-xs">
-                      {jobinstance.result}
+                      {jobInstance.result}
                     </div>
-                  </tablecell>
-                </tablerow>
+                  </TableCell>
+                </TableRow>
               )}
             </React.Fragment>
           ))}
-        </tablebody>
+        </TableBody>
       </Table>
     </motion.div>
   );
