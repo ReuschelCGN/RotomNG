@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { motion } from "motion/react";
+import { Fragment } from 'react';
 import {
   Table,
   TableBody,
@@ -108,7 +109,7 @@ export const JobsStatusesTable = ({
               {/* Expandable Result Row */}
               {jobInstance.result && (
                 <TableRow className="bg-muted/50">
-                  <TableCell className="text-left whitespace-normal" colspan={7} title={jobInstance.result}>
+                  <TableCell className="text-left whitespace-normal" colSpan={7} title={jobInstance.result}>
                     <div className="max-h-24 overflow-y-auto font-mono text-xs">
                       {jobInstance.result}
                     </div>
