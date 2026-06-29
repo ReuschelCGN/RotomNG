@@ -66,6 +66,15 @@ Returns the current system configuration including version, tuning parameters, a
       "enable": true,
       "max_selections": 100,
       "duration": "1m"
+    },
+    "device_listener": {
+      "ping_interval": "30s",
+      "pong_wait": "30s"
+    },
+    "controller_listener": {
+      "ping_interval": "30s",
+      "pong_wait": "30s",
+      "registration_timeout": "1m0s"
     }
   }
 }
@@ -75,6 +84,8 @@ Returns the current system configuration including version, tuning parameters, a
 - `sha`: Git commit SHA of the running build
 - `instance`: Only present if configured
 - `rate_limit`: Always present
+- `device_listener` / `controller_listener`: websocket keep-alive settings. `ping_interval` and `pong_wait` are durations; the read timeout fires if no pong is received within `ping_interval + pong_wait`. The `device_listener` settings also govern MITM worker connections, which connect on the device listener.
+- `registration_timeout`: max time allowed for a controller to complete registration before the normal ping-based read timeout applies.
 
 #### Reload Configuration
 ```http
@@ -102,7 +113,7 @@ GET /api/status
 X-Rotom-Secret: your-secret-here
 ```
 
-Returns comprehensive status information including all devices and controllers.
+Returns comprehensive status information including all devices and controllers, plus aggregate request statistics across all workers (`global_stats`).
 
 **Response:**
 ```json
@@ -218,9 +229,26 @@ Returns comprehensive status information including all devices and controllers.
       "messages_sent": 48,
       "bytes_sent": 24000
     }
-  ]
+  ],
+  "global_stats": {
+    "requests_rate_over_30_seconds": 12.5,
+    "requests_rate_over_1_min": 11.8,
+    "requests_rate_over_5_min": 10.4,
+    "requests_rate_over_15_min": 9.7,
+    "request_ms_avg_over_30_seconds": 152.3,
+    "request_ms_avg_over_1_min": 158.0,
+    "request_ms_avg_over_5_min": 161.6,
+    "request_ms_avg_over_15_min": 164.2
+  }
 }
 ```
+
+`global_stats` holds aggregate request statistics across **all** workers, including
+those that have since disconnected. Unlike summing the per-worker
+`time_windowed_stats`, these totals stay accurate as workers connect and
+disconnect, making it the correct source for overall req/s and average request
+duration. The field is omitted when no global stats are available. See
+[Time Windowed Statistics](#time-windowed-statistics) for the field definitions.
 
 ### Controller Endpoints
 

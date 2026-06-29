@@ -70,8 +70,28 @@ func getConnectionManagerSettings(cfg *config.Config) connections.ConnectionMana
 	}
 }
 
-func getControllerHandlerSettings(_ *config.Config) handlers.ControllerHandlerSettings {
-	return handlers.ControllerHandlerSettings{}
+func getControllerHandlerSettings(cfg *config.Config) handlers.ControllerHandlerSettings {
+	return handlers.ControllerHandlerSettings{
+		PingInterval:        cfg.ControllerListener.PingInterval,
+		PongWait:            cfg.ControllerListener.PongWait,
+		RegistrationTimeout: cfg.ControllerListener.RegistrationTimeout,
+	}
+}
+
+func getDeviceHandlerSettings(cfg *config.Config) handlers.DeviceHandlerSettings {
+	return handlers.DeviceHandlerSettings{
+		PingInterval: cfg.DeviceListener.PingInterval,
+		PongWait:     cfg.DeviceListener.PongWait,
+	}
+}
+
+// getWorkerHandlerSettings sources the MITM worker ping read-timeout settings
+// from the device listener, since workers connect on the device listener.
+func getWorkerHandlerSettings(cfg *config.Config) app_handlers.WorkerHandlerSettings {
+	return app_handlers.WorkerHandlerSettings{
+		PingInterval: cfg.DeviceListener.PingInterval,
+		PongWait:     cfg.DeviceListener.PongWait,
+	}
 }
 
 func getJobsManagerSettings(cfg *config.Config) jobs.ManagerSettings {
@@ -121,6 +141,8 @@ type App struct {
 
 	selectorConfig          selector.Config
 	connectionManagerConfig connections.ConnectionManagerConfig[*Controller, *MITMWorker]
+	deviceHandlerConfig     handlers.DeviceHandlerConfig
+	workerHandlerConfig     app_handlers.WorkerHandlerConfig
 	controllerHandlerConfig handlers.ControllerHandlerConfig[*Controller]
 	jobsManagerConfig       jobs.ManagerConfig
 	httpAPIHandlerConfig    app_handlers.HTTPAPIHandlerConfig
@@ -254,6 +276,11 @@ func (a *App) Init() error {
 	a.bufferPool = bufferpool.New(8 * 1024)
 	a.statsCollector = stats.NewPromStatsCollector(a.cfg.Prometheus.Namespace)
 
+	// Shared aggregate of request stats across all workers. Workers (via the
+	// worker handler) record into it; the API handler reads from it for the
+	// status reply, so the totals stay accurate even as workers disconnect.
+	globalRequestStats := mitm.NewRequestStatsCollector()
+
 	selectorSettings := getSelectorSettings(a.cfg)
 	a.selectorConfig = selector.Config{}
 	if err := a.selectorConfig.Init(selectorSettings); err != nil {
@@ -294,23 +321,30 @@ func (a *App) Init() error {
 		return fmt.Errorf("invalid device monitor config: %w", err)
 	}
 
-	deviceHandlerConfig := handlers.DeviceHandlerConfig{
+	a.deviceHandlerConfig = handlers.DeviceHandlerConfig{
 		Logger:              a.logger,
 		BufferPool:          a.bufferPool,
 		ConnectionManager:   a.connectionManager,
 		StatsCollector:      a.statsCollector,
 		DeviceMonitorConfig: deviceMonitorConfig,
 	}
-	a.deviceHandler = handlers.NewDeviceHandler(a.ctx, deviceHandlerConfig)
+	if err := a.deviceHandlerConfig.Init(getDeviceHandlerSettings(a.cfg)); err != nil {
+		return fmt.Errorf("invalid device handler config: %w", err)
+	}
+	a.deviceHandler = handlers.NewDeviceHandler(a.ctx, a.deviceHandlerConfig)
 
-	workerHandlerConfig := app_handlers.WorkerHandlerConfig{
+	a.workerHandlerConfig = app_handlers.WorkerHandlerConfig{
 		Logger:                   a.logger,
 		BufferPool:               a.bufferPool,
 		MITMWorkerStatsCollector: a.statsCollector,
 		ConnectionManager:        a.connectionManager,
 		StatsCollector:           a.statsCollector,
+		GlobalRequestStats:       globalRequestStats,
 	}
-	a.workerHandler = app_handlers.NewWorkerHandler(a.ctx, workerHandlerConfig)
+	if err := a.workerHandlerConfig.Init(getWorkerHandlerSettings(a.cfg)); err != nil {
+		return fmt.Errorf("invalid worker handler config: %w", err)
+	}
+	a.workerHandler = app_handlers.NewWorkerHandler(a.ctx, a.workerHandlerConfig)
 
 	a.deviceAuthMiddleware = auth.NewMiddleware(a.cfg.DeviceListener.Secret)
 	deviceServerConfig := services.DeviceServerConfig{
@@ -359,10 +393,11 @@ func (a *App) Init() error {
 
 	a.httpAuthMiddleware = auth.NewMiddleware(a.cfg.HTTPListener.Secret)
 	a.apiHandlerConfig = handlers.APIHandlerConfig[*Controller, *MITMWorker]{
-		Logger:            a.logger.With(slog.String("component", "api")),
-		ConnectionManager: a.connectionManager,
-		JobsManager:       a.jobsManager,
-		APIConverter:      api.NewConverter[*connections.Device[*MITMWorker], *MITMWorker, *Controller](),
+		Logger:             a.logger.With(slog.String("component", "api")),
+		ConnectionManager:  a.connectionManager,
+		JobsManager:        a.jobsManager,
+		APIConverter:       api.NewConverter[*connections.Device[*MITMWorker], *MITMWorker, *Controller](),
+		GlobalRequestStats: globalRequestStats,
 	}
 	if err := a.apiHandlerConfig.Init(getBaseAPIHandlerSettings(a.cfg)); err != nil {
 		return fmt.Errorf("invalid api handler config: %w", err)
@@ -432,6 +467,16 @@ func (a *App) reload() error {
 		return err
 	}
 
+	deviceHandlerSettings := getDeviceHandlerSettings(cfg)
+	if err := deviceHandlerSettings.Validate(); err != nil {
+		return err
+	}
+
+	workerHandlerSettings := getWorkerHandlerSettings(cfg)
+	if err := workerHandlerSettings.Validate(); err != nil {
+		return err
+	}
+
 	controllerHandlerSettings := getControllerHandlerSettings(cfg)
 	if err := controllerHandlerSettings.Validate(); err != nil {
 		return err
@@ -462,6 +507,12 @@ func (a *App) reload() error {
 	}
 	if err := a.jobsManagerConfig.PutSettings(jobManagerSettings); err != nil {
 		a.logger.LogAttrs(context.Background(), slog.LevelError, "failed to apply settings", slog.String("component", "jobs_manager"), slog.String("error", err.Error()))
+	}
+	if err := a.deviceHandlerConfig.PutSettings(deviceHandlerSettings); err != nil {
+		a.logger.LogAttrs(context.Background(), slog.LevelError, "failed to apply settings", slog.String("component", "device_handler"), slog.String("error", err.Error()))
+	}
+	if err := a.workerHandlerConfig.PutSettings(workerHandlerSettings); err != nil {
+		a.logger.LogAttrs(context.Background(), slog.LevelError, "failed to apply settings", slog.String("component", "worker_handler"), slog.String("error", err.Error()))
 	}
 	if err := a.controllerHandlerConfig.PutSettings(controllerHandlerSettings); err != nil {
 		a.logger.LogAttrs(context.Background(), slog.LevelError, "failed to apply settings", slog.String("component", "controller_handler"), slog.String("error", err.Error()))

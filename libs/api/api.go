@@ -7,6 +7,7 @@ import (
 
 	"github.com/UnownHash/RotomNG/libs/connections"
 	"github.com/UnownHash/RotomNG/libs/jobs"
+	"github.com/UnownHash/RotomNG/libs/stats"
 	"github.com/UnownHash/RotomNG/libs/ws"
 )
 
@@ -34,6 +35,11 @@ type CommonStats struct {
 	MessageLastSentAtMs int64 `json:"message_last_sent_at_ms"`
 	MessagesSent        int64 `json:"messages_sent"`
 	BytesSent           int64 `json:"bytes_sent"`
+
+	// LastSeenAtMs is the most recent activity on the connection, including
+	// ping/pong keep-alive, not just data messages. It is the correct field for
+	// a "last seen" display.
+	LastSeenAtMs int64 `json:"last_seen_at_ms"`
 }
 
 // CommonStatsFromWebsocketStats converts WebSocket stats to CommonStats.
@@ -46,6 +52,8 @@ func (converter *Converter[D, W, C]) CommonStatsFromWebsocketStats(wsStats ws.Co
 		MessageLastSentAtMs: timeToMs(wsStats.LastSentAt),
 		MessagesSent:        wsStats.MessagesSent,
 		BytesSent:           wsStats.BytesSent,
+
+		LastSeenAtMs: timeToMs(wsStats.LastSeenAt()),
 	}
 }
 
@@ -78,7 +86,6 @@ type Device struct {
 	WorkerInUseWeightPercent float64        `json:"worker_in_use_weight_percent"`
 	WorkerMaxWeight          int            `json:"worker_max_weight"`
 	LastConnectedAtMs        int64          `json:"last_connected_at_ms"`
-	LastSeenAtMs             int64          `json:"last_seen_at_ms"`
 	Enabled                  bool           `json:"enabled"`
 	IsConnected              bool           `json:"is_connected"`
 	CanBeUsed                bool           `json:"can_be_used"`
@@ -122,7 +129,6 @@ func (converter *Converter[D, W, C]) NewDeviceFromDevice(device D, includeWorker
 		Version:           device.Version(),
 		PublicIP:          device.PublicIP(),
 		LastConnectedAtMs: timeToMs(totalStats.ConnectedAt),
-		LastSeenAtMs:      timeToMs(totalStats.LastSeenAt()),
 		Enabled:           device.IsSelectionEnabled(),
 		IsConnected:       deviceSession != nil,
 		CanBeUsed:         canBeUsed,
@@ -209,7 +215,6 @@ type Worker struct {
 	StatsDisabled     bool               `json:"stats_disabled,omitzero"`
 	UserAgent         string             `json:"user_agent"`
 	LastConnectedAtMs int64              `json:"last_connected_at_ms"`
-	LastSeenAtMs      int64              `json:"last_seen_at_ms"`
 	IsConnected       bool               `json:"is_connected"`
 	IsInUse           bool               `json:"is_in_use"`
 	Platform          string             `json:"platform"`
@@ -246,11 +251,10 @@ func (converter *Converter[D, W, C]) NewControllerResponseFromController(control
 	}
 }
 
-// CreateTimeWindowedStatsFromWorker creates time-windowed statistics from a worker.
-// Windows are returned in order: 30s, 1m, 5m, 15m (matching mitm.StatsWindows).
-func (converter *Converter[D, W, C]) CreateTimeWindowedStatsFromWorker(worker W) *TimeWindowedStats {
-	s := worker.GetRequestStats()
-
+// CreateTimeWindowedStats converts windowed count/duration stats into the API
+// representation. Windows must be in order: 30s, 1m, 5m, 15m (matching
+// mitm.StatsWindows).
+func (converter *Converter[D, W, C]) CreateTimeWindowedStats(s stats.CountDurationWindows[uint64]) *TimeWindowedStats {
 	return &TimeWindowedStats{
 		RequestsRateOver30Seconds: s.Counts[0].RatePerSecond(),
 		RequestsRateOver1Min:      s.Counts[1].RatePerSecond(),
@@ -261,6 +265,12 @@ func (converter *Converter[D, W, C]) CreateTimeWindowedStatsFromWorker(worker W)
 		RequestMsAvgOver5Min:      s.Durations[2].Avg(),
 		RequestMsAvgOver15Min:     s.Durations[3].Avg(),
 	}
+}
+
+// CreateTimeWindowedStatsFromWorker creates time-windowed statistics from a worker.
+// Windows are returned in order: 30s, 1m, 5m, 15m (matching mitm.StatsWindows).
+func (converter *Converter[D, W, C]) CreateTimeWindowedStatsFromWorker(worker W) *TimeWindowedStats {
+	return converter.CreateTimeWindowedStats(worker.GetRequestStats())
 }
 
 // NewWorkerFromWorker converts an internal worker to an Worker.
@@ -308,7 +318,6 @@ func (converter *Converter[D, W, C]) NewWorkerFromWorker(worker W, canBeUsed boo
 		UserAgent:         worker.UserAgent(),
 		Platform:          worker.Platform().String(),
 		LastConnectedAtMs: timeToMs(totalStats.ConnectedAt),
-		LastSeenAtMs:      timeToMs(totalStats.LastSeenAt()),
 		IsConnected:       isConnected,
 		IsInUse:           isInUse,
 		Weight:            weight,
@@ -322,10 +331,15 @@ func (converter *Converter[D, W, C]) NewWorkerFromWorker(worker W, canBeUsed boo
 type StatusResponse struct {
 	Devices     []Device             `json:"devices"`
 	Controllers []ControllerResponse `json:"controllers"`
+	// GlobalStats holds aggregate request stats across all workers, including
+	// those that have since disconnected. It is the accurate source for overall
+	// req/s and avg ms, rather than summing the per-worker stats.
+	GlobalStats *TimeWindowedStats `json:"global_stats,omitempty"`
 }
 
-// StatusResponseFromDevicesAndControllers builds a StatusResponse from devices and controllers.
-func (converter *Converter[D, W, C]) StatusResponseFromDevicesAndControllers(devices []D, controllers []C) StatusResponse {
+// StatusResponseFromDevicesAndControllers builds a StatusResponse from devices,
+// controllers, and the global aggregate request stats.
+func (converter *Converter[D, W, C]) StatusResponseFromDevicesAndControllers(devices []D, controllers []C, globalStats stats.CountDurationWindows[uint64]) StatusResponse {
 	apiDevices := make([]Device, len(devices))
 	for idx, device := range devices {
 		apiDevices[idx] = converter.NewDeviceFromDevice(device, true, true)
@@ -337,6 +351,7 @@ func (converter *Converter[D, W, C]) StatusResponseFromDevicesAndControllers(dev
 	return StatusResponse{
 		Devices:     apiDevices,
 		Controllers: apiControllers,
+		GlobalStats: converter.CreateTimeWindowedStats(globalStats),
 	}
 }
 
