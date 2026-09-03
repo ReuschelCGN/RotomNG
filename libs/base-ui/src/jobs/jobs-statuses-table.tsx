@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { motion } from "motion/react";
+import React, { Fragment } from 'react';
 import {
   Table,
   TableBody,
@@ -73,43 +74,49 @@ export const JobsStatusesTable = ({
             <TableHead className="text-left">Started At</TableHead>
             <TableHead className="text-left">Finished At</TableHead>
             <TableHead className="text-left">Status</TableHead>
-            <TableHead className="text-left">Result</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedInstances.map((jobInstance) => (
-            <TableRow key={jobInstance.id} className={TABLE_BODY_ROW}>
-              <TableCell className="text-left">{jobInstance.id}</TableCell>
-              <TableCell className="text-left">{jobInstance.job_id}</TableCell>
-              <TableCell className="text-left">
-                {jobInstance.device_id}
-              </TableCell>
-              <TableCell className="text-left">
-                {jobInstance.device_origin ?? "-"}
-              </TableCell>
-              <TableCell className="text-left whitespace-nowrap">
-                {formatTimestamp(jobInstance.started_at_ms)}
-              </TableCell>
-              <TableCell className="text-left whitespace-nowrap">
-                {formatTimestamp(jobInstance.finished_at_ms || 0)}
-              </TableCell>
-              <TableCell className="text-left">
-                <span
-                  className={cn(
-                    "font-medium",
-                    getStatusClass(jobInstance.status),
-                  )}
-                >
-                  {jobInstance.status}
-                </span>
-              </TableCell>
-              <TableCell
-                className="text-left max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
-                title={jobInstance.result}
-              >
-                {jobInstance.result || "-"}
-              </TableCell>
-            </TableRow>
+            <React.Fragment key={jobInstance.id}>
+              {/* Main Data Row */}
+              <TableRow className={TABLE_BODY_ROW}>
+                <TableCell className="text-left">{jobInstance.id}</TableCell>
+                <TableCell className="text-left">{jobInstance.job_id}</TableCell>
+                <TableCell className="text-left">
+                  {jobInstance.device_id}
+                </TableCell>
+                <TableCell className="text-left">
+                  {jobInstance.device_origin ?? "-"}
+                </TableCell>
+                <TableCell className="text-left whitespace-nowrap">
+                  {formatTimestamp(jobInstance.started_at_ms)}
+                </TableCell>
+                <TableCell className="text-left whitespace-nowrap">
+                  {formatTimestamp(jobInstance.finished_at_ms || 0)}
+                </TableCell>
+                <TableCell className="text-left">
+                  <span
+                    className={cn(
+                      "font-medium",
+                      getStatusClass(jobInstance.status),
+                    )}
+                  >
+                    {jobInstance.status}
+                  </span>
+                </TableCell>
+              </TableRow>
+              {/* Expandable Result Row */}
+              {jobInstance.result && (
+                <TableRow className="bg-muted/50">
+                  <TableCell className="text-left whitespace-normal" colSpan={7} title={jobInstance.result}>
+                    <div className="max-h-24 overflow-y-auto font-mono text-xs">
+                      {jobInstance.result}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </React.Fragment>
           ))}
         </TableBody>
       </Table>
