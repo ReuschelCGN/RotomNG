@@ -37,6 +37,8 @@ const (
 	AuthStatus_AUTH_STATUS_ACCESS_RATE_LIMITED       AuthStatus = 8
 	AuthStatus_AUTH_STATUS_SESSION_TERMINATED        AuthStatus = 9
 	AuthStatus_AUTH_STATUS_SESSION_FAILED            AuthStatus = 10
+	AuthStatus_AUTH_STATUS_GOOGLE_PLAY_NOT_READY     AuthStatus = 11
+	AuthStatus_AUTH_STATUS_LOGIN_ERROR_BAIL          AuthStatus = 12
 	AuthStatus_AUTH_STATUS_LOGIN_TIMEOUT             AuthStatus = 20
 )
 
@@ -54,6 +56,8 @@ var (
 		8:  "AUTH_STATUS_ACCESS_RATE_LIMITED",
 		9:  "AUTH_STATUS_SESSION_TERMINATED",
 		10: "AUTH_STATUS_SESSION_FAILED",
+		11: "AUTH_STATUS_GOOGLE_PLAY_NOT_READY",
+		12: "AUTH_STATUS_LOGIN_ERROR_BAIL",
 		20: "AUTH_STATUS_LOGIN_TIMEOUT",
 	}
 	AuthStatus_value = map[string]int32{
@@ -68,6 +72,8 @@ var (
 		"AUTH_STATUS_ACCESS_RATE_LIMITED":       8,
 		"AUTH_STATUS_SESSION_TERMINATED":        9,
 		"AUTH_STATUS_SESSION_FAILED":            10,
+		"AUTH_STATUS_GOOGLE_PLAY_NOT_READY":     11,
+		"AUTH_STATUS_LOGIN_ERROR_BAIL":          12,
 		"AUTH_STATUS_LOGIN_TIMEOUT":             20,
 	}
 )
@@ -1427,7 +1433,7 @@ const file_rotom_proto_rawDesc = "" +
 	"\x05UNSET\x10\x00\x12\v\n" +
 	"\aSUCCESS\x10\x01\x12\x18\n" +
 	"\x14NO_WORKERS_AVAILABLE\x10\x02\x12\t\n" +
-	"\x05ERROR\x10\x03*\xa2\x03\n" +
+	"\x05ERROR\x10\x03*\xeb\x03\n" +
 	"\n" +
 	"AuthStatus\x12\x15\n" +
 	"\x11AUTH_STATUS_UNSET\x10\x00\x12)\n" +
@@ -1441,7 +1447,9 @@ const file_rotom_proto_rawDesc = "" +
 	"\x1fAUTH_STATUS_ACCESS_RATE_LIMITED\x10\b\x12\"\n" +
 	"\x1eAUTH_STATUS_SESSION_TERMINATED\x10\t\x12\x1e\n" +
 	"\x1aAUTH_STATUS_SESSION_FAILED\x10\n" +
-	"\x12\x1d\n" +
+	"\x12%\n" +
+	"!AUTH_STATUS_GOOGLE_PLAY_NOT_READY\x10\v\x12 \n" +
+	"\x1cAUTH_STATUS_LOGIN_ERROR_BAIL\x10\f\x12\x1d\n" +
 	"\x19AUTH_STATUS_LOGIN_TIMEOUT\x10\x14*\xb0\x05\n" +
 	"\tRpcStatus\x12\x18\n" +
 	"\x14RPC_STATUS_UNDEFINED\x10\x00\x12\x16\n" +
